@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NS-3 WiFi Builder — Taller Interactivo</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:       #f4f6f9;
+    --surface:  #ffffff;
+    --surface2: #eef1f6;
+    --border:   #d1d9e6;
+    --accent:   #1d6ef5;
+    --accent2:  #7c3aed;
+    --green:    #16a34a;
+    --red:      #dc2626;
+    --text:     #111827;
+    --muted:    #6b7280;
+    --code-bg:  #f8fafc;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 1.1rem 2rem;
+    display: flex; align-items: center; gap: 1.5rem;
+    background: #fff;
+    position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+  .logo { font-size: 1.1rem; font-weight: 800; color: var(--accent); }
+  .logo span { color: var(--text); }
+  .subtitle { font-size: 0.73rem; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+  .progress-wrap { margin-left: auto; display: flex; align-items: center; gap: 0.9rem; }
+  .progress-bar-outer { width: 160px; height: 6px; background: var(--surface2); border-radius: 99px; overflow: hidden; border: 1px solid var(--border); }
+  .progress-bar-inner { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 99px; transition: width 0.5s cubic-bezier(.4,0,.2,1); }
+  .progress-label { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: var(--muted); white-space: nowrap; }
+
+  /* ── LAYOUT ── */
+  .main { display: grid; grid-template-columns: 1fr 400px; min-height: calc(100vh - 65px); }
+
+  /* ── QUIZ PANEL ── */
+  .quiz-panel { padding: 2rem; border-right: 1px solid var(--border); overflow-y: auto; }
+
+  /* ── TOPOLOGY ── */
+  .topo-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.25rem 1.5rem 1rem;
+    margin-bottom: 1.75rem;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  }
+  .topo-label {
+    font-size: 0.67rem; font-family: 'JetBrains Mono', monospace;
+    color: var(--muted); letter-spacing: 0.07em; text-transform: uppercase;
+    margin-bottom: 0.75rem;
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+  .topo-label::after { content:''; flex:1; height:1px; background: var(--border); }
+  .topo-svg-wrap { display: flex; justify-content: center; }
+  .topo-svg { width: 100%; max-width: 440px; height: auto; }
+
+  /* ── STEP / QUESTION ── */
+  .step-badge {
+    display: inline-flex; align-items: center;
+    background: rgba(29,110,245,0.08);
+    border: 1px solid rgba(29,110,245,0.22);
+    border-radius: 6px;
+    padding: 0.22rem 0.7rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.67rem; color: var(--accent);
+    margin-bottom: 0.9rem; letter-spacing: 0.05em;
+  }
+  .question-title { font-size: 1.22rem; font-weight: 700; line-height: 1.4; margin-bottom: 0.4rem; }
+  .question-desc  { font-size: 0.85rem; color: var(--muted); line-height: 1.65; margin-bottom: 1.35rem; }
+
+  /* ── CODE CONTEXT ── */
+  .code-context { background: var(--code-bg); border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; margin-bottom: 1.4rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+  .code-context-bar { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; border-bottom: 1px solid #e2e8f0; background: var(--surface2); }
+  .dot { width: 9px; height: 9px; border-radius: 50%; }
+  .dot.r{background:#ff5f56}.dot.y{background:#ffbd2e}.dot.g{background:#27c93f}
+  .code-filename { font-family: 'JetBrains Mono', monospace; font-size: 0.67rem; color: var(--muted); margin-left: 0.25rem; }
+  .code-context pre { padding: 1rem 1.25rem; font-family: 'JetBrains Mono', monospace; font-size: 0.77rem; line-height: 1.8; overflow-x: auto; color: #374151; }
+  .code-context pre .cm  { color: #9ca3af; }
+  .code-context pre .kw  { color: #7c3aed; font-weight: 700; }
+  .code-context pre .str { color: #16a34a; }
+  .code-context pre .num { color: #d97706; }
+  .code-blank {
+    display: inline-block;
+    background: rgba(29,110,245,0.08);
+    border: 2px dashed rgba(29,110,245,0.45);
+    border-radius: 4px;
+    padding: 0.1em 1.2em;
+    color: var(--accent); font-style: italic;
+    animation: pulse-border 2s ease-in-out infinite;
+  }
+  @keyframes pulse-border {
+    0%,100%{border-color:rgba(29,110,245,.35)} 50%{border-color:rgba(29,110,245,.85)}
+  }
+
+  /* ── OPTIONS ── */
+  .options-label { font-size: 0.67rem; color: var(--muted); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.08em; margin-bottom: 0.55rem; text-transform: uppercase; }
+  .options-grid  { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.2rem; }
+  .option-btn {
+    background: var(--surface); border: 1.5px solid var(--border);
+    border-radius: 10px; padding: 0.8rem 1rem;
+    cursor: pointer; text-align: left;
+    display: flex; align-items: flex-start; gap: 0.85rem;
+    transition: all 0.15s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+  .option-btn:hover { border-color: var(--accent); transform: translateX(3px); box-shadow: 0 2px 8px rgba(29,110,245,0.1); }
+  .option-btn.correct  { border-color: var(--green);  background: rgba(22,163,74,0.05);  animation: flash-green 0.4s ease; }
+  .option-btn.wrong    { border-color: var(--red);    background: rgba(220,38,38,0.05);  animation: shake 0.35s ease; }
+  .option-btn.reveal-correct { border-color: var(--green); background: rgba(22,163,74,0.04); opacity: 0.75; }
+  @keyframes flash-green { 0%{box-shadow:0 0 0 0 rgba(22,163,74,.45)} 100%{box-shadow:0 0 0 10px rgba(22,163,74,0)} }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-5px)} 75%{transform:translateX(5px)} }
+
+  .option-letter {
+    width: 24px; height: 24px; border-radius: 6px;
+    background: var(--surface2); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; font-weight: 700;
+    color: var(--muted); flex-shrink: 0; margin-top: 1px; transition: all 0.15s;
+  }
+  .option-btn.correct  .option-letter { background: var(--green); color:#fff; border-color:var(--green); }
+  .option-btn.wrong    .option-letter { background: var(--red);   color:#fff; border-color:var(--red); }
+  .option-btn.reveal-correct .option-letter { background: rgba(22,163,74,.15); color:var(--green); border-color:var(--green); }
+  .option-code { font-family:'JetBrains Mono',monospace; font-size:0.76rem; line-height:1.65; color:#374151; white-space:pre; }
+  .option-btn.correct .option-code, .option-btn.reveal-correct .option-code { color: var(--green); }
+  .option-btn.wrong   .option-code { color: var(--red); }
+
+  /* ── FEEDBACK ── */
+  .feedback { border-radius: 8px; padding: 0.85rem 1.1rem; margin-bottom: 1.1rem; font-size: 0.84rem; line-height: 1.6; display: none; }
+  .feedback.show { display: block; animation: slideUp 0.25s ease; }
+  @keyframes slideUp { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+  .feedback.ok  { background:rgba(22,163,74,.08);  border:1px solid rgba(22,163,74,.3);  color:#15803d; }
+  .feedback.err { background:rgba(220,38,38,.07);  border:1px solid rgba(220,38,38,.25); color:#b91c1c; }
+  .feedback strong { font-weight:700; }
+  .feedback code { font-family:'JetBrains Mono',monospace; font-size:.82em; background:rgba(0,0,0,.06); padding:.1em .3em; border-radius:3px; }
+
+  /* ── BUTTONS ── */
+  .nav-row { display:flex; gap:0.65rem; align-items:center; }
+  .btn { padding:0.65rem 1.35rem; border-radius:8px; font-family:'Syne',sans-serif; font-size:0.82rem; font-weight:700; cursor:pointer; border:none; transition:all 0.15s; display:flex; align-items:center; gap:0.45rem; }
+  .btn-primary { background:var(--accent); color:#fff; }
+  .btn-primary:hover { background:#1558d6; transform:translateY(-1px); box-shadow:0 4px 14px rgba(29,110,245,.3); }
+  .btn-primary:disabled { opacity:.35; cursor:not-allowed; transform:none; box-shadow:none; }
+  .btn-ghost   { background:transparent; color:var(--muted); border:1.5px solid var(--border); }
+  .btn-ghost:hover { border-color:var(--accent); color:var(--accent); }
+  .btn-success { background:var(--green); color:#fff; }
+  .btn-success:hover { background:#15803d; transform:translateY(-1px); box-shadow:0 4px 14px rgba(22,163,74,.3); }
+
+  /* ── PREVIEW PANEL ── */
+  .preview-panel {
+    background: var(--code-bg);
+    border-left: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    position: sticky; top: 65px;
+    height: calc(100vh - 65px);
+    overflow: hidden;
+  }
+  .preview-header { padding:0.8rem 1.25rem; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:0.6rem; flex-shrink:0; background:var(--surface2); }
+  .preview-title  { font-family:'JetBrains Mono',monospace; font-size:0.67rem; color:var(--muted); letter-spacing:0.05em; }
+
+  .preview-code {
+    flex:1; overflow-y:auto;
+    padding:1rem 1.25rem;
+    font-family:'JetBrains Mono',monospace;
+    font-size:0.7rem; line-height:1.8; color:#9ca3af;
+    scrollbar-width:thin; scrollbar-color:var(--border) transparent;
+  }
+  /* colour classes for preview blocks */
+  .preview-code .blk-header   { color:#c7d2fe; }
+  .preview-code .blk-answered { color:#6b7280; }
+  .preview-code .blk-pending  { color:#d1d9e6; font-style:italic; }
+  .preview-code .blk-new {
+    color:#1d3a8a;
+    background:rgba(29,110,245,.07);
+    display:block;
+    margin:0 -1.25rem;
+    padding:.15rem 1.25rem;
+    border-left:3px solid var(--accent);
+    animation:fadeIn .4s ease;
+  }
+  /* empty line between blocks */
+  .preview-code .blk-sep { display:block; height:.65rem; }
+  @keyframes fadeIn { from{opacity:0;background:rgba(29,110,245,.2)} to{opacity:1;background:rgba(29,110,245,.07)} }
+
+  .preview-footer { padding:0.85rem 1.25rem; border-top:1px solid var(--border); flex-shrink:0; background:var(--surface2); }
+  .score-chips { display:flex; gap:0.4rem; margin-bottom:0.65rem; flex-wrap:wrap; }
+  .chip { font-family:'JetBrains Mono',monospace; font-size:0.66rem; padding:.18rem .55rem; border-radius:5px; }
+  .chip-green { background:rgba(22,163,74,.1);  color:var(--green); border:1px solid rgba(22,163,74,.25); }
+  .chip-red   { background:rgba(220,38,38,.08); color:var(--red);   border:1px solid rgba(220,38,38,.2); }
+  .chip-gray  { background:var(--surface2);      color:var(--muted); border:1px solid var(--border); }
+  .btn-dl { width:100%; justify-content:center; padding:0.7rem; font-size:0.8rem; }
+
+  /* ── FINAL ── */
+  .final-screen { display:none; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:3rem 2rem; grid-column:1; }
+  .final-screen.show { display:flex; }
+  .final-icon  { font-size:3.5rem; margin-bottom:1.2rem; animation:pop .5s cubic-bezier(.17,.67,.83,.67); }
+  @keyframes pop { 0%{transform:scale(0)} 70%{transform:scale(1.2)} 100%{transform:scale(1)} }
+  .final-title { font-size:1.8rem; font-weight:800; margin-bottom:.4rem; }
+  .final-sub   { color:var(--muted); margin-bottom:1.75rem; font-size:.9rem; }
+  .score-big   { font-family:'JetBrains Mono',monospace; font-size:3.5rem; font-weight:700; color:var(--accent); line-height:1; margin-bottom:.2rem; }
+  .score-label { font-size:.78rem; color:var(--muted); margin-bottom:2rem; }
+
+  @media (max-width:900px) { .main{grid-template-columns:1fr} .preview-panel{display:none} }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">NS-3 <span>WiFi Builder</span></div>
+    <div class="subtitle">// Taller de Simulación de Redes &middot; Módulos 8 &amp; 9</div>
+  </div>
+  <div class="progress-wrap">
+    <div class="progress-bar-outer">
+      <div class="progress-bar-inner" id="progressBar" style="width:0%"></div>
+    </div>
+    <div class="progress-label" id="progressLabel">0 / 8</div>
+  </div>
+</header>
+
+<div class="main" id="mainLayout">
+
+  <!-- ═══ QUIZ ═══ -->
+  <div class="quiz-panel" id="quizPanel">
+
+    <!-- TOPOLOGY SVG -->
+    <div class="topo-card">
+      <div class="topo-label">// topología de la simulación</div>
+      <div class="topo-svg-wrap">
+        <svg class="topo-svg" viewBox="0 0 480 295" xmlns="http://www.w3.org/2000/svg" font-family="'Syne',sans-serif">
+          <defs>
+            <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L8,3 z" fill="#dc2626"/>
+            </marker>
+          </defs>
+
+          <!-- coord labels -->
+          <text x="228" y="22"  font-size="11" fill="#9ca3af" font-style="italic" text-anchor="middle">norte (50, 30)</text>
+          <text x="58"  y="164" font-size="11" fill="#9ca3af" font-style="italic" text-anchor="middle">oeste (30, 50)</text>
+          <text x="422" y="164" font-size="11" fill="#9ca3af" font-style="italic" text-anchor="middle">este (70, 50)</text>
+
+          <!-- uplink lines -->
+          <line x1="228" y1="103" x2="228" y2="153" stroke="#dc2626" stroke-width="1.8" stroke-dasharray="5,3" marker-end="url(#arr)"/>
+          <text x="237"  y="136" font-size="10" fill="#dc2626" font-weight="700">↓ uplink</text>
+
+          <line x1="133" y1="174" x2="185" y2="174" stroke="#dc2626" stroke-width="1.8" stroke-dasharray="5,3" marker-end="url(#arr)"/>
+          <text x="136"  y="163" font-size="10" fill="#dc2626" font-weight="700">uplink →</text>
+
+          <line x1="323" y1="174" x2="271" y2="174" stroke="#dc2626" stroke-width="1.8" stroke-dasharray="5,3" marker-end="url(#arr)"/>
+          <text x="276"  y="163" font-size="10" fill="#dc2626" font-weight="700">← uplink</text>
+
+          <!-- AP -->
+          <ellipse cx="228" cy="174" rx="52" ry="44" fill="#fde8e8" stroke="#c0392b" stroke-width="2.5"/>
+          <text x="228" y="167" text-anchor="middle" font-size="14" font-weight="800" fill="#7f1d1d">AP</text>
+          <text x="228" y="181" text-anchor="middle" font-size="9.5" fill="#7f1d1d">192.168.1.1</text>
+          <text x="228" y="194" text-anchor="middle" font-size="9"   fill="#9b2c2c">PacketSink</text>
+
+          <!-- STA-1 north -->
+          <ellipse cx="228" cy="65" rx="50" ry="35" fill="#1d4ed8" stroke="#1e3a8a" stroke-width="2"/>
+          <text x="228" y="61"  text-anchor="middle" font-size="12" font-weight="800" fill="#fff">STA-1</text>
+          <text x="228" y="76"  text-anchor="middle" font-size="9.5" fill="#bfdbfe">192.168.1.2</text>
+
+          <!-- STA-3 west -->
+          <ellipse cx="78"  cy="174" rx="50" ry="35" fill="#1d4ed8" stroke="#1e3a8a" stroke-width="2"/>
+          <text x="78"  y="170" text-anchor="middle" font-size="12" font-weight="800" fill="#fff">STA-3</text>
+          <text x="78"  y="185" text-anchor="middle" font-size="9.5" fill="#bfdbfe">192.168.1.4</text>
+
+          <!-- STA-2 east -->
+          <ellipse cx="378" cy="174" rx="50" ry="35" fill="#1d4ed8" stroke="#1e3a8a" stroke-width="2"/>
+          <text x="378" y="170" text-anchor="middle" font-size="12" font-weight="800" fill="#fff">STA-2</text>
+          <text x="378" y="185" text-anchor="middle" font-size="9.5" fill="#bfdbfe">192.168.1.3</text>
+
+          <!-- legend -->
+          <rect x="10" y="256" width="460" height="28" rx="7" fill="#f1f5f9" stroke="#e2e8f0"/>
+          <ellipse cx="32"  cy="270" rx="11" ry="9" fill="#1d4ed8"/>
+          <text x="49"  y="274" font-size="10" fill="#374151">Estación (STA) — OnOffApplication</text>
+          <ellipse cx="248" cy="270" rx="11" ry="9" fill="#fde8e8" stroke="#c0392b" stroke-width="1.5"/>
+          <text x="265" y="274" font-size="10" fill="#374151">Access Point — PacketSink</text>
+        </svg>
+      </div>
+    </div>
+
+    <!-- QUESTION -->
+    <div class="step-badge" id="stepBadge"></div>
+    <div class="question-title" id="qTitle"></div>
+    <div class="question-desc"  id="qDesc"></div>
+
+    <div class="code-context">
+      <div class="code-context-bar">
+        <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
+        <div class="code-filename" id="codeFilename">wifi-basico.cc</div>
+      </div>
+      <pre id="codeSnippet"></pre>
+    </div>
+
+    <div class="options-label">// selecciona la línea correcta</div>
+    <div class="options-grid" id="optionsGrid"></div>
+    <div class="feedback" id="feedback"></div>
+
+    <div class="nav-row">
+      <button class="btn btn-primary" id="btnNext" onclick="nextQuestion()" disabled>Siguiente →</button>
+      <button class="btn btn-ghost"   onclick="skipQuestion()">Omitir</button>
+      <div style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:0.68rem;color:var(--muted)" id="hintText"></div>
+    </div>
+  </div>
+
+  <!-- ═══ FINAL ═══ -->
+  <div class="final-screen" id="finalScreen">
+    <div class="final-icon" id="finalIcon">🎉</div>
+    <div class="final-title">¡Script completado!</div>
+    <div class="final-sub">Descarga tu archivo y pruébalo en NS-3</div>
+    <div class="score-big"  id="scoreBig"></div>
+    <div class="score-label">respuestas correctas</div>
+    <div class="nav-row" style="justify-content:center;gap:1rem;flex-wrap:wrap;">
+      <button class="btn btn-success" onclick="downloadScript()">⬇ Descargar wifi-basico.cc</button>
+      <button class="btn btn-ghost"   onclick="restartQuiz()">↺ Reiniciar</button>
+    </div>
+  </div>
+
+  <!-- ═══ PREVIEW PANEL ═══ -->
+  <div class="preview-panel">
+    <div class="preview-header">
+      <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
+      <div class="preview-title">wifi-basico.cc — VISTA PREVIA EN VIVO</div>
+    </div>
+    <div class="preview-code" id="previewCode"></div>
+    <div class="preview-footer">
+      <div class="score-chips">
+        <div class="chip chip-green" id="chipOk">✓ 0 correctas</div>
+        <div class="chip chip-red"   id="chipErr">✗ 0 errores</div>
+        <div class="chip chip-gray"  id="chipLeft">8 restantes</div>
+      </div>
+      <button class="btn btn-success btn-dl" onclick="downloadScript()">⬇ Descargar .cc</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════════════
+// PREGUNTAS
+// ════════════════════════════════════════════════════════════════════
+const QUESTIONS = [
+  {
+    step:"PASO 1 · CREAR NODOS",
+    title:"¿Cuántos nodos AP se crean?",
+    desc:"En una red WiFi básica con infraestructura hay exactamente UN punto de acceso. Completa la línea que instancia el nodo AP.",
+    filename:"wifi-basico.cc",
+    before:`<span class="cm">// 1. Crear nodos</span>\nNS_LOG_INFO(<span class="str">"Paso 1: Creando nodos..."</span>);\n\nNodeContainer nodoAP;`,
+    blank:"nodoAP.Create( ? );",
+    after:"\nNodeContainer nodoSTA;\nnodoSTA.Create(<span class=\"num\">3</span>);",
+    options:[
+      {letter:"A",code:"nodoAP.Create(1);", correct:true,  hint:"✓ Un solo AP para toda la red."},
+      {letter:"B",code:"nodoAP.Create(3);", correct:false, hint:"✗ Crearía 3 APs — demasiados para esta topología."},
+      {letter:"C",code:"Create(1);",         correct:false, hint:"✗ Falta el objeto: llama al método sobre nodoAP."},
+      {letter:"D",code:"nodoAP.Add(1);",     correct:false, hint:"✗ NodeContainer no tiene un método Add() para crear nodos."},
+    ],
+    fb_ok:"<strong>¡Correcto!</strong> <code>nodoAP.Create(1)</code> instancia exactamente 1 nodo AP.",
+    fb_err:"La respuesta correcta es <strong>A</strong>: <code>nodoAP.Create(1)</code>. Solo existe un AP en esta topología.",
+    code:`    NodeContainer nodoAP;\n    nodoAP.Create(1);\n\n    NodeContainer nodoSTA;\n    nodoSTA.Create(3);`,
+  },
+  {
+    step:"PASO 2 · CANAL FÍSICO",
+    title:"¿Cómo se crea el canal YansWifi?",
+    desc:"YansWifiChannelHelper configura el modelo de canal inalámbrico. El método Default() aplica pérdida de propagación y retardo estándar.",
+    filename:"wifi-basico.cc",
+    before:`<span class="cm">// 2. Canal y capa física</span>\nNS_LOG_INFO(<span class="str">"Paso 2: Configurando canal..."</span>);`,
+    blank:"YansWifiChannelHelper canal = ??? ;",
+    after:"YansWifiPhyHelper phy;\nphy.SetChannel(canal.Create());",
+    options:[
+      {letter:"A",code:"YansWifiChannelHelper canal = YansWifiChannelHelper::Default();", correct:true,  hint:"✓ Default() aplica propagación y retardo estándar."},
+      {letter:"B",code:"YansWifiChannelHelper canal = new YansWifiChannelHelper();",      correct:false, hint:"✗ NS-3 no usa new para helpers; usa métodos estáticos."},
+      {letter:"C",code:"WifiChannelHelper canal = WifiChannelHelper::Default();",         correct:false, hint:"✗ La clase correcta es YansWifiChannelHelper."},
+      {letter:"D",code:"YansWifiChannelHelper canal;",                                    correct:false, hint:"✗ Falta inicializar con Default()."},
+    ],
+    fb_ok:"<strong>¡Correcto!</strong> <code>YansWifiChannelHelper::Default()</code> es el punto de entrada estándar para el canal Yans.",
+    fb_err:"La respuesta es <strong>A</strong>: <code>YansWifiChannelHelper::Default()</code>.",
+    code:`    YansWifiChannelHelper canal = YansWifiChannelHelper::Default();\n    YansWifiPhyHelper phy;\n    phy.SetChannel(canal.Create());`,
+  },
+  {
+    step:"PASO 3 · MAC ESTACIONES",
+    title:"¿Qué rol MAC tienen las estaciones?",
+    desc:"En 802.11 Infrastructure mode, las estaciones clientes tienen MAC de tipo STA; el punto de acceso tiene MAC de tipo AP.",
+    filename:"wifi-basico.cc",
+    before:`WifiMacHelper miMac;\n\n<span class="cm">// MAC de las estaciones</span>\nmiMac.SetType(`,
+    blank:'"ns3::???WifiMac", "Ssid", SsidValue(miSSID), ...);',
+    after:'NetDeviceContainer devSTA = miWifi.Install(phy, miMac, nodoSTA);',
+    options:[
+      {letter:"A",code:'miMac.SetType("ns3::StaWifiMac",\n             "Ssid", SsidValue(miSSID),\n             "ActiveProbing", BooleanValue(false));', correct:true,  hint:"✓ StaWifiMac es el rol cliente en modo infraestructura."},
+      {letter:"B",code:'miMac.SetType("ns3::ApWifiMac",\n             "Ssid", SsidValue(miSSID));',                                                     correct:false, hint:"✗ ApWifiMac es para el punto de acceso."},
+      {letter:"C",code:'miMac.SetType("ns3::AdhocWifiMac",\n             "Ssid", SsidValue(miSSID));',                                                  correct:false, hint:"✗ AdhocWifiMac se usa en redes sin infraestructura."},
+      {letter:"D",code:'miMac.SetType("ns3::WifiMac",\n              "Ssid", SsidValue(miSSID));',                                                      correct:false, hint:"✗ WifiMac es clase abstracta, no se instancia directamente."},
+    ],
+    fb_ok:"<strong>¡Correcto!</strong> <code>ns3::StaWifiMac</code> configura la estación como cliente asociado al AP.",
+    fb_err:"La respuesta es <strong>A</strong>: <code>ns3::StaWifiMac</code>. Las STAs usan este rol en modo infraestructura.",
+    code:`    WifiHelper miWifi;\n    Ssid miSSID = Ssid("red-taller");\n    WifiMacHelper miMac;\n\n    miMac.SetType("ns3::StaWifiMac",\n                  "Ssid", SsidValue(miSSID),\n                  "ActiveProbing", BooleanValue(false));\n    NetDeviceContainer devSTA = miWifi.Install(phy, miMac, nodoSTA);\n\n    miMac.SetType("ns3::ApWifiMac",\n                  "Ssid", SsidValue(miSSID));\n    NetDeviceContainer devAP  = miWifi.Install(phy, miMac, nodoAP);`,
+  },
+  {
+    step:"PASO 4 · MOVILIDAD",
+    title:"¿Dónde se ubica el AP en la cuadrícula?",
+    desc:"En NetAnim el eje Y crece hacia abajo. El AP va en el centro (50,50) y las STAs a su alrededor (norte, este, oeste).",
+    filename:"wifi-basico.cc",
+    before:`MobilityHelper movilidad;\nmovilidad.SetMobilityModel(<span class="str">"ns3::ConstantPositionMobilityModel"</span>);\nmovilidad.Install(nodoAP);\nmovilidad.Install(nodoSTA);\n\n<span class="cm">// AP en el centro</span>`,
+    blank:"nodoAP.Get(0)->GetObject<MobilityModel>()->SetPosition( ??? );",
+    after:`<span class="cm">// STA-1 al norte</span>\nnodoSTA.Get(0)->...->SetPosition(Vector(<span class="num">50.0, 30.0</span>, 0.0));`,
+    options:[
+      {letter:"A",code:"->SetPosition(Vector(50.0, 50.0, 0.0));", correct:true,  hint:"✓ Centro de la cuadrícula: x=50, y=50."},
+      {letter:"B",code:"->SetPosition(Vector(0.0, 0.0, 0.0));",   correct:false, hint:"✗ Esa es la esquina superior izquierda."},
+      {letter:"C",code:"->SetPosition(50.0, 50.0, 0.0);",         correct:false, hint:"✗ Falta envolver en Vector(…)."},
+      {letter:"D",code:"->SetPosition(Vector(50.0, 30.0, 0.0));", correct:false, hint:"✗ (50,30) es la posición de STA-1 (norte)."},
+    ],
+    fb_ok:"<strong>¡Correcto!</strong> El AP se sitúa en <code>Vector(50.0, 50.0, 0.0)</code>, el centro de la cuadrícula.",
+    fb_err:"La respuesta es <strong>A</strong>: <code>Vector(50.0, 50.0, 0.0)</code>.",
+    code:`    MobilityHelper movilidad;\n    movilidad.SetMobilityModel("ns3::ConstantPositionMobilityModel");\n    movilidad.Install(nodoAP);\n    movilidad.Install(nodoSTA);\n\n    nodoAP.Get(0)->GetObject<MobilityModel>()->SetPosition(Vector(50.0, 50.0, 0.0));\n    nodoSTA.Get(0)->GetObject<MobilityModel>()->SetPosition(Vector(50.0, 30.0, 0.0));\n    nodoSTA.Get(1)->GetObject<MobilityModel>()->SetPosition(Vector(70.0, 50.0, 0.0));\n    nodoSTA.Get(2)->GetObject<MobilityModel>()->SetPosition(Vector(30.0, 50.0, 0.0));`,
+  },
+  {
+    step:"PASO 5 · PILA IP",
+    title:"¿Cuál es la máscara de subred correcta?",
+    desc:"Se usa una red /24 (255.255.255.0) con base 192.168.1.0. Completa la llamada a SetBase().",
+    filename:"wifi-basico.cc",
+    before:"InternetStackHelper pila;\npila.Install(nodoAP);\npila.Install(nodoSTA);\n\nIpv4AddressHelper dir;",
+    blank:'dir.SetBase("192.168.1.0", ??? );',
+    after:"Ipv4InterfaceContainer ifAP  = dir.Assign(devAP);\nIpv4InterfaceContainer ifSTA = dir.Assign(devSTA);",
+    options:[
+      {letter:"A",code:'dir.SetBase("192.168.1.0", "255.255.255.0");', correct:true,  hint:"✓ Red /24: hasta 254 hosts."},
+      {letter:"B",code:'dir.SetBase("192.168.1.0", "255.255.0.0");',   correct:false, hint:"✗ Esa es /16: demasiado grande."},
+      {letter:"C",code:'dir.SetBase("10.0.0.0",    "255.255.255.0");', correct:false, hint:"✗ Dirección base incorrecta."},
+      {letter:"D",code:'dir.SetBase("192.168.1.0", "/24");',           correct:false, hint:"✗ NS-3 requiere notación decimal, no CIDR."},
+    ],
+    fb_ok:'<strong>¡Correcto!</strong> <code>"255.255.255.0"</code> define una red /24 con hasta 254 hosts.',
+    fb_err:'La respuesta es <strong>A</strong>: la máscara <code>"255.255.255.0"</code> corresponde a /24.',
+    code:`    InternetStackHelper pila;\n    pila.Install(nodoAP);\n    pila.Install(nodoSTA);\n\n    Ipv4AddressHelper dir;\n    dir.SetBase("192.168.1.0", "255.255.255.0");\n\n    Ipv4InterfaceContainer ifAP  = dir.Assign(devAP);\n    Ipv4InterfaceContainer ifSTA = dir.Assign(devSTA);`,
+  },
+  {
+    step:"PASO 6 · RECEPTOR",
+    title:"¿Qué helper instala el receptor de paquetes?",
+    desc:"El AP actúa como sink (destino). El helper escucha en cualquier IP del AP en el puerto 1234 con UDP.",
+    filename:"wifi-basico.cc",
+    before:'uint16_t puerto = <span class="num">1234</span>;',
+    blank:'PacketSinkHelper receptor("ns3::???SocketFactory",\n    InetSocketAddress(Ipv4Address::GetAny(), puerto));',
+    after:'ApplicationContainer appReceptor = receptor.Install(nodoAP.Get(<span class="num">0</span>));\nappReceptor.Start(Seconds(<span class="num">1.0</span>));',
+    options:[
+      {letter:"A",code:'PacketSinkHelper receptor("ns3::UdpSocketFactory",\n    InetSocketAddress(Ipv4Address::GetAny(), puerto));', correct:true,  hint:"✓ UDP es sin conexión: ideal para esta simulación."},
+      {letter:"B",code:'PacketSinkHelper receptor("ns3::TcpSocketFactory",\n    InetSocketAddress(Ipv4Address::GetAny(), puerto));', correct:false, hint:"✗ TCP añade overhead; el transmisor usa UDP."},
+      {letter:"C",code:'PacketSink receptor("ns3::UdpSocketFactory",\n    InetSocketAddress(Ipv4Address::GetAny(), puerto));',    correct:false, hint:"✗ Se necesita PacketSinkHelper, no PacketSink directamente."},
+      {letter:"D",code:'PacketSinkHelper receptor(InetSocketAddress(Ipv4Address::GetAny(), puerto));',                              correct:false, hint:"✗ Falta el primer argumento: el tipo de socket factory."},
+    ],
+    fb_ok:"<strong>¡Correcto!</strong> <code>ns3::UdpSocketFactory</code> coincide con el transmisor OnOff que también usa UDP.",
+    fb_err:"La respuesta es <strong>A</strong>: el receptor debe usar <code>ns3::UdpSocketFactory</code>.",
+    code:`    uint16_t puerto = 1234;\n    PacketSinkHelper receptor("ns3::UdpSocketFactory",\n        InetSocketAddress(Ipv4Address::GetAny(), puerto));\n    ApplicationContainer appReceptor = receptor.Install(nodoAP.Get(0));\n    appReceptor.Start(Seconds(1.0));\n    appReceptor.Stop(Seconds(tiempoSim));`,
+  },
+  {
+    step:"PASO 7 · TRANSMISOR",
+    title:"¿Cuál es el DataRate del transmisor OnOff?",
+    desc:"El transmisor OnOffApplication envía paquetes de 1024 bytes. Elige el DataRate correcto según wifi-basico.cc (Módulo 8).",
+    filename:"wifi-basico.cc",
+    before:'OnOffHelper transmisor(<span class="str">"ns3::UdpSocketFactory"</span>,\n    InetSocketAddress(ifAP.GetAddress(<span class="num">0</span>), puerto));',
+    blank:'transmisor.SetAttribute("DataRate", StringValue( ??? ));',
+    after:'transmisor.SetAttribute(<span class="str">"PacketSize"</span>, UintegerValue(<span class="num">1024</span>));\ntransmisor.SetAttribute(<span class="str">"OnTime"</span>,\n    StringValue(<span class="str">"ns3::ConstantRandomVariable[Constant=1]"</span>));',
+    options:[
+      {letter:"A",code:'transmisor.SetAttribute("DataRate", StringValue("1Mbps"));',   correct:true,  hint:"✓ 1 Mbps es el rate en wifi-basico.cc (módulo 8)."},
+      {letter:"B",code:'transmisor.SetAttribute("DataRate", StringValue("54Mbps"));',  correct:false, hint:"✗ 54 Mbps se usa en wifi-flow.cc (módulo 9)."},
+      {letter:"C",code:'transmisor.SetAttribute("DataRate", UintegerValue(1000000));', correct:false, hint:"✗ DataRate necesita StringValue, no UintegerValue."},
+      {letter:"D",code:'transmisor.SetDataRate("1Mbps");',                             correct:false, hint:'✗ OnOffHelper no tiene un método SetDataRate().'},
+    ],
+    fb_ok:'<strong>¡Correcto!</strong> En el módulo 8 el DataRate es <code>"1Mbps"</code>.',
+    fb_err:'La respuesta es <strong>A</strong>: <code>"1Mbps"</code> es el valor en wifi-basico.cc.',
+    code:`    OnOffHelper transmisor("ns3::UdpSocketFactory",\n        InetSocketAddress(ifAP.GetAddress(0), puerto));\n    transmisor.SetAttribute("DataRate",   StringValue("1Mbps"));\n    transmisor.SetAttribute("PacketSize", UintegerValue(1024));\n    transmisor.SetAttribute("OnTime",\n        StringValue("ns3::ConstantRandomVariable[Constant=1]"));\n    transmisor.SetAttribute("OffTime",\n        StringValue("ns3::ConstantRandomVariable[Constant=0]"));\n    ApplicationContainer appsEstaciones = transmisor.Install(nodoSTA);\n    appsEstaciones.Start(Seconds(2.0));\n    appsEstaciones.Stop(Seconds(tiempoSim - 1.0));`,
+  },
+  {
+    step:"PASO 8 · SIMULACIÓN",
+    title:"¿Cuánto tiempo extra se agrega al Stop?",
+    desc:"Simulator::Stop() se llama con tiempoSim más un margen para que los últimos eventos terminen de procesarse.",
+    filename:"wifi-basico.cc",
+    before:'<span class="cm">// Ejecutar simulación</span>\nNS_LOG_INFO(<span class="str">"Iniciando simulacion..."</span>);',
+    blank:"Simulator::Stop(Seconds( tiempoSim + ??? ));",
+    after:"Simulator::Run();\nSimulator::Destroy();",
+    options:[
+      {letter:"A",code:"Simulator::Stop(Seconds(tiempoSim + 1.0));",  correct:true,  hint:"✓ +1 s es suficiente para que todos los eventos drenen."},
+      {letter:"B",code:"Simulator::Stop(Seconds(tiempoSim));",         correct:false, hint:"✗ Sin margen, algunos paquetes finales podrían cortarse."},
+      {letter:"C",code:"Simulator::Stop(Seconds(tiempoSim + 10.0));", correct:false, hint:"✗ 10 s extra es innecesario y alarga la simulación."},
+      {letter:"D",code:"Simulator::Stop(Seconds(0));",                 correct:false, hint:"✗ Stop(0) terminaría inmediatamente sin simular nada."},
+    ],
+    fb_ok:"<strong>¡Correcto!</strong> El margen de <code>+1.0</code> s asegura que los últimos paquetes se entreguen.",
+    fb_err:"La respuesta es <strong>A</strong>: <code>tiempoSim + 1.0</code>. El segundo extra es práctica estándar en NS-3.",
+    code:`    Simulator::Stop(Seconds(tiempoSim + 1.0));\n    Simulator::Run();\n    Simulator::Destroy();`,
+  },
+];
+
+// ════════════════════════════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════════════════════════════
+let current  = 0, correct = 0, errors = 0, answered = false;
+let script_lines = new Array(QUESTIONS.length).fill(null);
+
+const HDR =
+`// ============================================================
+// wifi-basico.cc — generado con NS-3 WiFi Builder
+// Módulo 8 – Introducción a WiFi en NS-3
+// ============================================================
+
+#include "ns3/core-module.h"
+#include "ns3/network-module.h"
+#include "ns3/internet-module.h"
+#include "ns3/wifi-module.h"
+#include "ns3/mobility-module.h"
+#include "ns3/applications-module.h"
+#include "ns3/netanim-module.h"
+
+using namespace ns3;
+NS_LOG_COMPONENT_DEFINE("WifiBasico");
+
+int main(int argc, char *argv[])
+{
+    double tiempoSim = 7.0;
+    CommandLine cmd;
+    cmd.AddValue("tiempoSim", "Duracion de la simulacion en segundos", tiempoSim);
+    cmd.Parse(argc, argv);
+    Time::SetResolution(Time::NS);
+    LogComponentEnable("WifiBasico", LOG_LEVEL_INFO);`;
+
+const FTR =
+`    NS_LOG_INFO("Simulacion finalizada.");
+    return 0;
+}`;
+
+// ════════════════════════════════════════════════════════════════════
+// RENDER
+// ════════════════════════════════════════════════════════════════════
+function renderQuestion() {
+  const q = QUESTIONS[current];
+  answered = false;
+  document.getElementById('stepBadge').textContent    = q.step;
+  document.getElementById('qTitle').textContent       = q.title;
+  document.getElementById('qDesc').textContent        = q.desc;
+  document.getElementById('codeFilename').textContent = q.filename;
+  document.getElementById('codeSnippet').innerHTML =
+    q.before + '\n' +
+    `<span class="code-blank">${q.blank}</span>` + '\n' +
+    (q.after || '');
+
+  const grid = document.getElementById('optionsGrid');
+  grid.innerHTML = '';
+  q.options.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'option-btn';
+    btn.id = `opt-${i}`;
+    btn.onclick = () => selectOption(i);
+    btn.innerHTML = `<div class="option-letter">${opt.letter}</div><div class="option-code">${opt.code}</div>`;
+    grid.appendChild(btn);
+  });
+
+  document.getElementById('feedback').className = 'feedback';
+  document.getElementById('feedback').innerHTML = '';
+  document.getElementById('btnNext').disabled   = true;
+  document.getElementById('hintText').textContent = '';
+  updateProgress(); updatePreview();
+}
+
+function selectOption(idx) {
+  if (answered) return;
+  answered = true;
+  const q   = QUESTIONS[current];
+  const opt = q.options[idx];
+  const fb  = document.getElementById('feedback');
+  document.getElementById(`opt-${idx}`).classList.add(opt.correct ? 'correct' : 'wrong');
+  if (opt.correct) {
+    fb.className = 'feedback ok show'; fb.innerHTML = q.fb_ok; correct++;
+  } else {
+    fb.className = 'feedback err show'; fb.innerHTML = q.fb_err; errors++;
+    q.options.forEach((o, i) => { if (o.correct) document.getElementById(`opt-${i}`).classList.add('reveal-correct'); });
+  }
+  script_lines[current] = q.code;
+  document.getElementById('hintText').textContent = opt.hint;
+  document.getElementById('btnNext').disabled = false;
+  updateChips(); updatePreview();
+}
+
+function nextQuestion() {
+  if (current < QUESTIONS.length - 1) { current++; renderQuestion(); } else showFinal();
+}
+function skipQuestion() {
+  if (!answered) script_lines[current] = QUESTIONS[current].code;
+  nextQuestion();
+}
+function showFinal() {
+  document.getElementById('quizPanel').style.display = 'none';
+  document.getElementById('finalScreen').classList.add('show');
+  document.getElementById('scoreBig').textContent = `${correct} / ${QUESTIONS.length}`;
+  const pct = correct / QUESTIONS.length;
+  document.getElementById('finalIcon').textContent = pct >= .75 ? '🎉' : pct >= .5 ? '👍' : '💪';
+  updateProgress();
+}
+function restartQuiz() {
+  current = 0; correct = 0; errors = 0; answered = false;
+  script_lines = new Array(QUESTIONS.length).fill(null);
+  document.getElementById('quizPanel').style.display = '';
+  document.getElementById('finalScreen').classList.remove('show');
+  renderQuestion();
+}
+function updateProgress() {
+  const done = Math.min(current + (answered ? 1 : 0), QUESTIONS.length);
+  document.getElementById('progressBar').style.width   = (done / QUESTIONS.length * 100) + '%';
+  document.getElementById('progressLabel').textContent = `${done} / ${QUESTIONS.length}`;
+}
+function updateChips() {
+  document.getElementById('chipOk').textContent   = `✓ ${correct} correctas`;
+  document.getElementById('chipErr').textContent   = `✗ ${errors} errores`;
+  document.getElementById('chipLeft').textContent  = `${QUESTIONS.length - current - 1} restantes`;
+}
+
+// ════════════════════════════════════════════════════════════════════
+// PREVIEW — with blank separator lines between blocks
+// ════════════════════════════════════════════════════════════════════
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function updatePreview() {
+  const pre = document.getElementById('previewCode');
+  let html = `<span class="blk-answered">${esc(HDR)}</span>`;
+
+  for (let i = 0; i < QUESTIONS.length; i++) {
+    // Always add an empty separator line between blocks
+    html += `<span class="blk-sep"></span>`;
+
+    if (script_lines[i] !== null) {
+      const cls = (i < current) ? 'blk-answered' : 'blk-new';
+      html += `<span class="${cls}">${esc(script_lines[i])}</span>`;
+    } else {
+      html += `<span class="blk-pending">    // ... [${QUESTIONS[i].step}]</span>`;
+    }
+  }
+
+  html += `<span class="blk-sep"></span>`;
+  html += `<span class="blk-answered">${esc(FTR)}</span>`;
+  pre.innerHTML = html;
+  pre.scrollTop = pre.scrollHeight;
+}
+
+// ════════════════════════════════════════════════════════════════════
+// DOWNLOAD
+// ════════════════════════════════════════════════════════════════════
+function downloadScript() {
+  const body = QUESTIONS.map((q, i) =>
+    (script_lines[i] !== null ? script_lines[i] : `    // ... [${q.step}]`) + '\n'
+  ).join('\n');
+  const code = HDR + '\n\n' + body + '\n' + FTR;
+  const blob = new Blob([code], {type:'text/plain'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = 'wifi-basico.cc'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Init
+renderQuestion();
+updateChips();
+</script>
+</body>
+</html>
